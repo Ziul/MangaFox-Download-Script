@@ -168,7 +168,7 @@ def get_manga(data):
 	url_fragment = data[1]
 	chapter_number = get_chapter_number(url_fragment)
 	#print('===============================================')
-	print('Chapter ' + chapter_number)
+	print('Downloading chapter ' + chapter_number)
 	#print('===============================================')
 	image_urls = get_chapter_image_urls(url_fragment)
 	download_urls(image_urls, manga_name, chapter_number)
@@ -176,6 +176,7 @@ def get_manga(data):
 	make_cbz(download_dir)
 	if not _options.conservative:
 			shutil.rmtree(download_dir)
+	print('Chapter ' + chapter_number + ' done.')
 
 def download_manga(manga_name, chapter_number=None):
 	"""Download all chapters of a manga"""
