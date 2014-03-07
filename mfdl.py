@@ -37,7 +37,21 @@ _MAX_PEERS = 15
 
 import optparse
 _parser = optparse.OptionParser(
-		usage = "%prog MANGA_NAME [RANGE_START [RANGE_END]] [Options]",
+		usage = """%prog MANGA_NAME [RANGE_START [RANGE_END]] [Options]
+
+Examples: 
+Download all of The World God Only Knows:
+
+    ~ $ python mfdl.py "The World God Only Knows"
+
+Download The World God Only Knows chapter 222.5:
+
+    ~ $ python mfdl.py "The World God Only Knows" 222.5
+
+Download The World God Only Knows chapters 190-205:
+
+    ~ $ python mfdl.py "The World God Only Knows" 190 205
+		""",
 		description = "Build CBZ files from each chapter of the selected Manga",
 		version = 'Mangafox Download Script v' + __version__
 		)
@@ -154,33 +168,6 @@ def make_cbz(dirname):
 				print('writing {0} to {1}'.format(filename, zipname))
 			zipfile.write(filename)
 
-
-def download_manga_range(manga_name, range_start, range_end):
-	"""Download a range of a chapters"""
-	print('Getting range of chapters')
-	chapter_urls = get_chapter_urls(manga_name)
-	iend = chapter_urls.keys().index(range_start) + 1
-	istart = chapter_urls.keys().index(range_end)
-
-	#for url_fragment in islice(chapter_urls.itervalues(), istart, iend):
-	#	print url_fragment
-	#result = _pool.map_async(get_manga, chapter_urls.items())
-	#result.wait()
-	#"""
-	for url_fragment in islice(chapter_urls.itervalues(), istart, iend):
-		chapter_number = get_chapter_number(url_fragment)
-		if _options.verbose:
-			print('===============================================')
-			print('Chapter ' + chapter_number)
-			print('===============================================')
-		image_urls = get_chapter_image_urls(url_fragment)
-		download_urls(image_urls, manga_name, chapter_number)
-		download_dir = './{0}/{1}'.format(manga_name, chapter_number)
-		make_cbz(download_dir)
-		if not _options.conservative:
-			shutil.rmtree(download_dir)
-		#"""
-
 def get_manga(url_fragment):
 	""" Fast sequence to get a manga """
 	manga_name = _args[0]
@@ -198,6 +185,25 @@ def get_manga(url_fragment):
 			shutil.rmtree(download_dir)
 	#if _options.verbose:
 	print('Chapter ' + chapter_number + ' done.')
+
+def download_manga_range(manga_name, range_start, range_end):
+	"""Download a range of a chapters"""
+	print('Getting range of chapters')
+	chapter_urls = get_chapter_urls(manga_name)
+	iend = chapter_urls.keys().index(range_start) + 1
+	istart = chapter_urls.keys().index(range_end)
+	for url_fragment in islice(chapter_urls.itervalues(), istart, iend):
+		chapter_number = get_chapter_number(url_fragment)
+		if _options.verbose:
+			print('===============================================')
+			print('Chapter ' + chapter_number)
+			print('===============================================')
+		image_urls = get_chapter_image_urls(url_fragment)
+		download_urls(image_urls, manga_name, chapter_number)
+		download_dir = './{0}/{1}'.format(manga_name, chapter_number)
+		make_cbz(download_dir)
+		if not _options.conservative:
+			shutil.rmtree(download_dir)
 
 def download_manga(manga_name, chapter_number=None):
 	"""Download all chapters of a manga"""
@@ -234,6 +240,3 @@ if __name__ == '__main__':
 		download_manga(_args[0])
 	else:
 		_parser.print_help()
-		print('USAGE: mfdl.py [MANGA_NAME]')
-		print('       mfdl.py [MANGA_NAME] [CHAPTER_NUMBER]')
-		print('       mfdl.py [MANGA_NAME] [RANGE_START] [RANGE_END]')
