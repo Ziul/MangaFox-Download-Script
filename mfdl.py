@@ -2,9 +2,15 @@
 # encoding: utf-8
 
 
-"""Mangafox Download Script by Kunal Sarkhel <theninja@bluedevs.net>"""
+"""Mangafox Download Script by Kunal Sarkhel <theninja@bluedevs.net>
 
-__author__ = 'Kunal Sarkhel. Revised by Luiz Fernando Gomes de Oliveira'
+Mangafox Download Script is a manga downloader similar to my old \
+Onemanga Download Script (although onemanga.com shut down). It  \
+works by scraping the image URL from every page in a manga chapter.
+It then it downloads all the images.
+"""
+
+__author__ = 'Kunal Sarkhel. Revised by Luiz Oliveira'
 __version__ = '0.8'
 
 import sys
@@ -27,13 +33,13 @@ except ImportError:
 from itertools import islice
 
 URL_BASE = "http://mangafox.me/"
-MAX_PEERS = 15
+_MAX_PEERS = 15
 
 import optparse
 _parser = optparse.OptionParser(
-		usage = "%prog MANGA_NAME [RANGE_START] [RANGE_END]",
+		usage = "%prog MANGA_NAME [RANGE_START [RANGE_END]] [Options]",
 		description = "Build CBZ files from each chapter of the selected Manga",
-		version = __version__
+		version = 'Mangafox Download Script v' + __version__
 		)
 #quiet options
 _parser.add_option("-q", "--quiet",
@@ -50,7 +56,7 @@ _parser.add_option("-c",
 	default = False
 )
 
-(_options, args) = _parser.parse_args()
+(_options, _args) = _parser.parse_args()
 def get_page_soup(url):
 	"""Download a page and return a BeautifulSoup object of the html"""
 	with closing(urllib.urlopen(url)) as html_file:
@@ -62,7 +68,8 @@ def get_chapter_urls(manga_name):
 	replace = lambda s, k: s.replace(k, '_')
 	manga_url = reduce(replace, [' ', '-'], manga_name.lower())
 	url = '{0}manga/{1}'.format(URL_BASE, manga_url)
-	#print('Url: ' + url)
+	if _options.verbose:
+		print('Url: ' + url)
 	soup = get_page_soup(url)
 	manga_does_not_exist = soup.find('form', {'id': 'searchform'})
 	if manga_does_not_exist:
@@ -98,17 +105,20 @@ def get_page_numbers(soup):
 
 def get_chapter_image_urls(url_fragment):
 	"""Find all image urls of a chapter and return them"""
-	#print('Getting chapter urls')
+	if _options.verbose:
+		print('Getting chapter urls')
 	url_fragment = os.path.dirname(url_fragment) + '/'
 	chapter_url = url_fragment
 	chapter = get_page_soup(chapter_url)
 	pages = get_page_numbers(chapter)
 	image_urls = []
-	#print('Getting image urls...')
+	if _options.verbose:
+		print('Getting image urls...')
 	for page in pages:
-		#print('url_fragment: {0}'.format(url_fragment))
-		#print('page: {0}'.format(page))
-		#print('Getting image url from {0}{1}.html'.format(url_fragment, page))
+		if _options.verbose:
+			print('url_fragment: {0}'.format(url_fragment))
+			print('page: {0}'.format(page))
+			print('Getting image url from {0}{1}.html'.format(url_fragment, page))
 		page_soup = get_page_soup(chapter_url + page + '.html')
 		images = page_soup.findAll('img', {'id': 'image'})
 		if images:
@@ -129,7 +139,8 @@ def download_urls(image_urls, manga_name, chapter_number):
 	os.makedirs(download_dir)
 	for i, url in enumerate(image_urls):
 		filename = './{0}/{1}/{2:03}.jpg'.format(manga_name, chapter_number, i)
-		#print('Downloading {0} to {1}'.format(url, filename))
+		if _options.verbose:
+			print('Downloading {0} to {1}'.format(url, filename))
 		urllib.urlretrieve(url, filename)
 
 
@@ -139,48 +150,58 @@ def make_cbz(dirname):
 	images = glob.glob(os.path.abspath(dirname) + '/*.jpg')
 	with closing(ZipFile(zipname, 'w')) as zipfile:
 		for filename in images:
-			#print('writing {0} to {1}'.format(filename, zipname))
+			if _options.verbose:
+				print('writing {0} to {1}'.format(filename, zipname))
 			zipfile.write(filename)
 
 
 def download_manga_range(manga_name, range_start, range_end):
 	"""Download a range of a chapters"""
-	print('Getting chapter urls')
+	print('Getting range of chapters')
 	chapter_urls = get_chapter_urls(manga_name)
 	iend = chapter_urls.keys().index(range_start) + 1
 	istart = chapter_urls.keys().index(range_end)
+
+	#for url_fragment in islice(chapter_urls.itervalues(), istart, iend):
+	#	print url_fragment
+	#result = _pool.map_async(get_manga, chapter_urls.items())
+	#result.wait()
+	#"""
 	for url_fragment in islice(chapter_urls.itervalues(), istart, iend):
 		chapter_number = get_chapter_number(url_fragment)
-		print('===============================================')
-		print('Chapter ' + chapter_number)
-		print('===============================================')
+		if _options.verbose:
+			print('===============================================')
+			print('Chapter ' + chapter_number)
+			print('===============================================')
 		image_urls = get_chapter_image_urls(url_fragment)
 		download_urls(image_urls, manga_name, chapter_number)
 		download_dir = './{0}/{1}'.format(manga_name, chapter_number)
 		make_cbz(download_dir)
 		if not _options.conservative:
 			shutil.rmtree(download_dir)
+		#"""
 
-def get_manga(data):
+def get_manga(url_fragment):
 	""" Fast sequence to get a manga """
-	manga_name = sys.argv[1]
-	chapter_number = data[0]
+	manga_name = _args[0]
 	url_fragment = data[1]
 	chapter_number = get_chapter_number(url_fragment)
-	#print('===============================================')
-	print('Downloading chapter ' + chapter_number)
-	#print('===============================================')
+	if _options.verbose:
+		print('===============================================')
+		print('Downloading chapter ' + chapter_number)
+		print('===============================================')
 	image_urls = get_chapter_image_urls(url_fragment)
 	download_urls(image_urls, manga_name, chapter_number)
 	download_dir = './{0}/{1}'.format(manga_name, chapter_number)
 	make_cbz(download_dir)
 	if not _options.conservative:
 			shutil.rmtree(download_dir)
+	#if _options.verbose:
 	print('Chapter ' + chapter_number + ' done.')
 
 def download_manga(manga_name, chapter_number=None):
 	"""Download all chapters of a manga"""
-	_pool = Pool(processes=MAX_PEERS)
+	_pool = Pool(processes=_MAX_PEERS)
 	chapter_urls = get_chapter_urls(manga_name)
 	if chapter_number:
 		if chapter_number in chapter_urls:
@@ -189,9 +210,10 @@ def download_manga(manga_name, chapter_number=None):
 			error_text = 'Error: Chapter {0} does not exist'
 			sys.exit(error_text.format(chapter_number))
 		chapter_number = get_chapter_number(url_fragment)
-		print('===============================================')
-		print('Chapter ' + chapter_number)
-		print('===============================================')
+		if _options.verbose:
+			print('===============================================')
+			print('Chapter ' + chapter_number)
+			print('===============================================')
 		image_urls = get_chapter_image_urls(url_fragment)
 		download_urls(image_urls, manga_name, chapter_number)
 		download_dir = './{0}/{1}'.format(manga_name, chapter_number)
@@ -199,17 +221,19 @@ def download_manga(manga_name, chapter_number=None):
 		if not _options.conservative:
 			shutil.rmtree(download_dir)
 	else:
+		print('Getting all chapters')
 		result = _pool.map_async(get_manga, chapter_urls.items())
 		result.wait()		
 
 if __name__ == '__main__':
-	if len(args) == 3:
-		download_manga_range(args[0], args[1], args[2])
-	elif len(args) == 2:
-		download_manga(args[0], args[1])
-	elif len(args) == 1:
-		download_manga(args[0])
+	if len(_args) == 3:
+		download_manga_range(_args[0], _args[1], _args[2])
+	elif len(_args) == 2:
+		download_manga(_args[0], _args[1])
+	elif len(_args) == 1:
+		download_manga(_args[0])
 	else:
+		_parser.print_help()
 		print('USAGE: mfdl.py [MANGA_NAME]')
 		print('       mfdl.py [MANGA_NAME] [CHAPTER_NUMBER]')
 		print('       mfdl.py [MANGA_NAME] [RANGE_START] [RANGE_END]')
