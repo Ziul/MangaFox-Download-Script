@@ -34,7 +34,7 @@ try:
     from collections import OrderedDict
 except ImportError:
     from ordereddict import OrderedDict
-from itertools import islice
+from itertools import islice, chain
 
 URL_BASE = "http://mangafox.me/"
 # URL_BASE = "http://www.mangareader.net/"
@@ -137,6 +137,15 @@ def get_page_numbers(soup):
     return (html['value'] for html in raw.findAll('option'))
 
 
+def get_chapter_image_urls_thread(page):
+    image_urls = []
+    page_soup = get_page_soup(page + '.html')
+    images = page_soup.findAll('img', {'id': 'image'})
+    if images:
+        image_urls.append(images[0]['src'])
+        return image_urls
+
+
 def get_chapter_image_urls(url_fragment):
     """Find all image urls of a chapter and return them"""
     if _options.verbose:
@@ -150,16 +159,29 @@ def get_chapter_image_urls(url_fragment):
         print('Getting image urls...')
 
     # TODO: Next pass to be paralelized
-    for page in pages:
-        if _options.verbose:
-            print('url_fragment: {0}'.format(url_fragment))
-            print('page: {0}'.format(page))
-            print(
-                'Getting image url from {0}{1}.html'.format(url_fragment, page))
-        page_soup = get_page_soup(chapter_url + page + '.html')
-        images = page_soup.findAll('img', {'id': 'image'})
-        if images:
-            image_urls.append(images[0]['src'])
+    _pool = ThreadPool(processes=20)
+    result = _pool.map(
+        get_chapter_image_urls_thread,
+        [chapter_url + page for page in pages])
+
+    result = [x for x in result if x is not None]
+    print result
+    try:
+        image_urls = list(chain(*result))
+    except Exception as e:
+        print result
+        raise e
+
+    # for page in pages:
+    #     if _options.verbose:
+    #         print('url_fragment: {0}'.format(url_fragment))
+    #         print('page: {0}'.format(page))
+    #         print(
+    #             'Getting image url from {0}{1}.html'.format(url_fragment, page))
+    #     page_soup = get_page_soup(chapter_url + page + '.html')
+    #     images = page_soup.findAll('img', {'id': 'image'})
+    #     if images:
+    #         image_urls.append(images[0]['src'])
     return image_urls
 
 
