@@ -30,7 +30,6 @@ from itertools import islice
 
 __version__ = '0.8'
 URL_BASE = "http://mangafox.me/"
-_MAX_PEERS = 2
 
 _parser = optparse.OptionParser(
     usage="""%prog MANGA_NAME RANGE_START RANGE_END
@@ -91,7 +90,6 @@ except IndexError:
     _parser.print_help()
     exit(-1)
 (_options, _args) = _parser.parse_args()
-L = threading.Lock()
 
 
 def order(name1, name2):
@@ -111,8 +109,6 @@ def DoVolumes(dirsl):
             zipname = glob.glob(path.abspath(root))[
                 0] + '/%s_%s.cbz' % (root, k)
             with ZipFile(zipname, 'a') as zipfile:
-                # if _options.verbose:
-                #     print('writing {0} to {1}'.format(i, zipname))
                 for filename in images:
                     # print filename
                     zipfile.write(filename)
@@ -149,7 +145,6 @@ def Dir2Pdf(root):
     dirs = ''
     volumes = {}
 
-    # _pool = Pool(processes=_MAX_PEERS)
     for i in dirsl:
         print i
         name = i.split('/')[-1]
@@ -157,7 +152,6 @@ def Dir2Pdf(root):
             volumes[name.split('c')[0][1:]] = []
         volumes[name.split('c')[0][1:]].append(i)
 
-    #result = _pool.map(DoVolumes, [x[1] for x in volumes.items()])
     for k in volumes.keys():
         dirsl = sorted(volumes[k], cmp=order)
         dirs = ''
@@ -165,7 +159,7 @@ def Dir2Pdf(root):
             dirs += ' \"%s\"/*' % i
         cmd = "convert " + dirs + ' \"%s/%s_%s.pdf\"' % (root, root, k)
 
-        print "Mounting volume %s: " % k
+        print "Mounting PDF volume %s: " % k
         # print cmd
         system(cmd)
 
