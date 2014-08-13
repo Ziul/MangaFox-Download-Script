@@ -22,7 +22,9 @@ import re
 from multiprocessing import Pool
 from zipfile import ZipFile
 from functools import reduce
-from jpg2pdf import Dir2Pdf
+# from jpg2pdf import Dir2Pdf
+import jpg2pdf
+from multiprocessing.pool import ThreadPool
 try:
     from bs4 import BeautifulSoup
 except ImportError:
@@ -35,7 +37,8 @@ except ImportError:
 from itertools import islice
 
 URL_BASE = "http://mangafox.me/"
-_MAX_PEERS = 100
+# URL_BASE = "http://www.mangareader.net/"
+_MAX_PEERS = 5
 
 import optparse
 _parser = optparse.OptionParser(
@@ -63,6 +66,12 @@ _parser.add_option("-q", "--quiet",
                    action="store_false",
                    help="suppress non error messages",
                    default=True
+                   )
+_parser.add_option("-m", "--manga",
+                   dest="manga",
+                   type='string',
+                   help="Name of the manga",
+                   default=''
                    )
 # conservative options
 _parser.add_option("-c",
@@ -157,23 +166,38 @@ def get_chapter_number(url_fragment):
     return ''.join(url_fragment.rsplit("/")[5:-1])
 
 
+def download(url_list):
+    i, url, manga_name, chapter_number = url_list
+    filename = './{0}/{1}/{1}{2:03}.jpg'.format(manga_name, chapter_number, i)
+    if _options.verbose:
+        print('Downloading {0} to {1}'.format(url, filename))
+    urllib.urlretrieve(url, filename)
+
+
 def download_urls(image_urls, manga_name, chapter_number):
     """Download all images from a list"""
     download_dir = '{0}/{1}/'.format(manga_name, chapter_number)
     if os.path.exists(download_dir):
         shutil.rmtree(download_dir)
     os.makedirs(download_dir)
+    _pool = ThreadPool(processes=30)
+    data = []
     for i, url in enumerate(image_urls):
-        filename = './{0}/{1}/{2:03}.jpg'.format(manga_name, chapter_number, i)
-        if _options.verbose:
-            print('Downloading {0} to {1}'.format(url, filename))
-        urllib.urlretrieve(url, filename)
+        data.append((i, url, manga_name, chapter_number))
+    result = _pool.map(download, data)
+    # for i, url in enumerate(image_urls):
+    #     filename = './{0}/{1}/{1}{2:03}.jpg'.format(
+    #         manga_name, chapter_number, i)
+    #     if _options.verbose:
+    #         print('Downloading {0} to {1}'.format(url, filename))
+    #     urllib.urlretrieve(url, filename)
 
 
 def make_cbz(dirname):
     """Create CBZ files for all JPEG image files in a directory."""
     zipname = dirname + '.cbz'
     images = glob.glob(os.path.abspath(dirname) + '/*.jpg')
+    # images = glob.glob(os.path.abspath(dirname))
     with closing(ZipFile(zipname, 'w')) as zipfile:
         for filename in images:
             if _options.verbose:
@@ -194,8 +218,8 @@ def get_manga(url_fragment):
     image_urls = get_chapter_image_urls(url_fragment)
     download_urls(image_urls, manga_name, chapter_number)
     download_dir = './{0}/{1}'.format(manga_name, chapter_number)
-    if not _options.pdf:
-        make_cbz(download_dir)
+    # if not _options.pdf:
+    #     make_cbz(download_dir)
     if not _options.conservative:
         shutil.rmtree(download_dir)
     # if _options.verbose:
@@ -246,8 +270,10 @@ def download_manga(manga_name, chapter_number=None):
     else:
         print('Getting all chapters')
         result = _pool.map(get_manga, chapter_urls.items())
-    if _options.pdf:
-        Dir2Pdf(manga_name)
+
+    jpg2pdf.Dir2Cbz(manga_name)
+    # if _options.pdf:
+    #     Dir2Pdf(manga_name)
 
 if __name__ == '__main__':
     if len(_args) == 3:
@@ -256,6 +282,8 @@ if __name__ == '__main__':
         download_manga(_args[0], _args[1])
     elif len(_args) == 1:
         download_manga(_args[0])
-        # Dir2Pdf(_args[0])
-    else:
-        _parser.print_help()
+    #     Dir2Pdf(_args[0])
+    # else:
+    # _parser.print_help()
+    # download_manga(_args[0])
+    #     Dir2Pdf(_args[0])

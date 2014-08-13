@@ -12,8 +12,10 @@ import glob
 import shutil
 import threading
 from functools import partial
+from os import listdir, path
 import re
 from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 from zipfile import ZipFile
 try:
     from bs4 import BeautifulSoup
@@ -78,6 +80,13 @@ try:
                        help="Last chapter number from the manga to be download",
                        # default=argv[3]
                        )
+
+    _parser.add_option("-r", "--resize",
+                       dest="resize",
+                       action="store_true",
+                       help="suppress non error messages",
+                       default=False
+                       )
 except IndexError:
     _parser.print_help()
     exit(-1)
@@ -88,23 +97,48 @@ L = threading.Lock()
 def order(name1, name2):
     name1 = name1.split('/')[-1]
     name2 = name2.split('/')[-1]
-    return int(name2.split('c')[1]) - int(name1.split('c')[1])
+    return int(float(name2.split('c')[1]) - float(name1.split('c')[1]))
 
 
-def DoVolumes(volume_list):
-    volume = volume_list[0].split('/')[2].split('c')[0][1:]
-    print "Mounting volume %s: " % volume
-    # print volume_list
+def DoVolumes(dirsl):
+        root, k = dirsl[0].split('/')
+        k = k.split('c')[0][1:]
+        dirname = ''
+        print "\nMounting volume %s: " % k
+        for i in reversed(dirsl):
+            dirname = './%s' % i
+            images = glob.glob(dirname + '/*.jpg')
+            zipname = glob.glob(path.abspath(root))[
+                0] + '/%s_%s.cbz' % (root, k)
+            with ZipFile(zipname, 'a') as zipfile:
+                # if _options.verbose:
+                #     print('writing {0} to {1}'.format(i, zipname))
+                for filename in images:
+                    # print filename
+                    zipfile.write(filename)
+                closing(zipfile)
+
+
+def Dir2Cbz(root):
+    if(root[-1] == '/'):
+        root = root[:-1]
+    dirl = [x[0] for x in walk(root)]
+    dirsl = dirl[1:]
     dirs = ''
-    L.acquire()
-    for i in reversed(volume_list):
-        dirs += ' \"%s\"/*' % i
-    L.release()
-    cmd = "convert " + dirs + ' \"' + \
-        _options.manga_name + '_%s.pdf\"' % volume
+    volumes = {}
 
-    print cmd
-    # system(cmd)
+    _pool = ThreadPool(processes=20)
+    for i in dirsl:
+        name = i.split('/')[-1]
+        if name.split('c')[0][1:] not in volumes:
+            volumes[name.split('c')[0][1:]] = []
+        volumes[name.split('c')[0][1:]].append(i)
+
+    if _options.resize:
+        from care_image import resize_files_from_dir
+        result = _pool.map(resize_files_from_dir, dirsl)
+
+    result = _pool.map(DoVolumes, [x[1] for x in volumes.items()])
 
 
 def Dir2Pdf(root):
@@ -115,15 +149,13 @@ def Dir2Pdf(root):
     dirs = ''
     volumes = {}
 
-    _pool = Pool(processes=_MAX_PEERS)
+    # _pool = Pool(processes=_MAX_PEERS)
     for i in dirsl:
         print i
         name = i.split('/')[-1]
         if name.split('c')[0][1:] not in volumes:
             volumes[name.split('c')[0][1:]] = []
         volumes[name.split('c')[0][1:]].append(i)
-
-    # print [x[1] for x in volumes.items()]
 
     #result = _pool.map(DoVolumes, [x[1] for x in volumes.items()])
     for k in volumes.keys():
@@ -137,8 +169,8 @@ def Dir2Pdf(root):
         # print cmd
         system(cmd)
 
+
 if __name__ == '__main__':
     if(_options.manga_name[-1] == '/'):
         _options.manga_name = _options.manga_name[:-1]
-    # DownloadManga(_options.manga_name, _options.first, _options.last)
-    Dir2Pdf(_options.manga_name)
+    Dir2Cbz(_options.manga_name)
