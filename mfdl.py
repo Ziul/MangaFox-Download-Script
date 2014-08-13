@@ -148,6 +148,8 @@ def get_chapter_image_urls(url_fragment):
     image_urls = []
     if _options.verbose:
         print('Getting image urls...')
+
+    # TODO: Next pass to be paralelized
     for page in pages:
         if _options.verbose:
             print('url_fragment: {0}'.format(url_fragment))
