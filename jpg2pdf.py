@@ -30,6 +30,7 @@ from itertools import islice
 
 __version__ = '0.8'
 URL_BASE = "http://mangafox.me/"
+_MAX_THREADS = 30
 
 _parser = optparse.OptionParser(
     usage="""%prog MANGA_NAME RANGE_START RANGE_END
@@ -123,7 +124,6 @@ def Dir2Cbz(root):
     dirs = ''
     volumes = {}
 
-    _pool = ThreadPool(processes=20)
     for i in dirsl:
         name = i.split('/')[-1]
         if name.split('c')[0][1:] not in volumes:
@@ -132,8 +132,11 @@ def Dir2Cbz(root):
 
     if _options.resize:
         from care_image import resize_files_from_dir
+        _pool = ThreadPool(processes=_MAX_THREADS * 3)
         result = _pool.map(resize_files_from_dir, dirsl)
+        del _pool
 
+    _pool = ThreadPool(processes=_MAX_THREADS)
     result = _pool.map(DoVolumes, [x[1] for x in volumes.items()])
 
 

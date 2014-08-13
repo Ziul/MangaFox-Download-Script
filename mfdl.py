@@ -38,7 +38,8 @@ from itertools import islice, chain
 
 URL_BASE = "http://mangafox.me/"
 # URL_BASE = "http://www.mangareader.net/"
-_MAX_PEERS = 5
+_MAX_PEERS = 10
+_MAX_THREADS = 30
 
 import optparse
 _parser = optparse.OptionParser(
@@ -158,30 +159,18 @@ def get_chapter_image_urls(url_fragment):
     if _options.verbose:
         print('Getting image urls...')
 
-    # TODO: Next pass to be paralelized
-    _pool = ThreadPool(processes=20)
+    _pool = ThreadPool(processes=_MAX_THREADS)
     result = _pool.map(
         get_chapter_image_urls_thread,
         [chapter_url + page for page in pages])
 
+    # remove possibles None Values
     result = [x for x in result if x is not None]
-    print result
     try:
         image_urls = list(chain(*result))
     except Exception as e:
         print result
         raise e
-
-    # for page in pages:
-    #     if _options.verbose:
-    #         print('url_fragment: {0}'.format(url_fragment))
-    #         print('page: {0}'.format(page))
-    #         print(
-    #             'Getting image url from {0}{1}.html'.format(url_fragment, page))
-    #     page_soup = get_page_soup(chapter_url + page + '.html')
-    #     images = page_soup.findAll('img', {'id': 'image'})
-    #     if images:
-    #         image_urls.append(images[0]['src'])
     return image_urls
 
 
@@ -193,8 +182,6 @@ def get_chapter_number(url_fragment):
 def download(url_list):
     i, url, manga_name, chapter_number = url_list
     filename = './{0}/{1}/{1}{2:03}.jpg'.format(manga_name, chapter_number, i)
-    if _options.verbose:
-        print('Downloading {0} to {1}'.format(url, filename))
     urllib.urlretrieve(url, filename)
 
 
@@ -204,10 +191,13 @@ def download_urls(image_urls, manga_name, chapter_number):
     if os.path.exists(download_dir):
         shutil.rmtree(download_dir)
     os.makedirs(download_dir)
-    _pool = ThreadPool(processes=30)
+    _pool = ThreadPool(processes=_MAX_THREADS)
     data = []
     for i, url in enumerate(image_urls):
         data.append((i, url, manga_name, chapter_number))
+    if _options.verbose:
+        filename = './{0}/{1}/'.format(manga_name, chapter_number)
+        print('Downloading {0} to {1}'.format(chapter_number, filename))
     result = _pool.map(download, data)
     # for i, url in enumerate(image_urls):
     #     filename = './{0}/{1}/{1}{2:03}.jpg'.format(
@@ -236,9 +226,9 @@ def get_manga(url_fragment):
     print url_fragment
     chapter_number = get_chapter_number(url_fragment)
     if _options.verbose:
-        print('===============================================')
-        print('Downloading chapter ' + chapter_number)
-        print('===============================================')
+        print('''===============================================
+Downloading chapter ''' + chapter_number + '''
+===============================================''')
     image_urls = get_chapter_image_urls(url_fragment)
     download_urls(image_urls, manga_name, chapter_number)
     download_dir = './{0}/{1}'.format(manga_name, chapter_number)
