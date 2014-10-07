@@ -1,0 +1,7 @@
+nguage: python
+before_script:
+ - pip install beautifulsoup
+install:
+ - python mfdl.py -h
+
+
