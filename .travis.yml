@@ -2,6 +2,7 @@ nguage: python
 before_script:
  - pip install beautifulsoup
 install:
+ - pip install beautifulsoup
  - python mfdl.py -h
 
 
