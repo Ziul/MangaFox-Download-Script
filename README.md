@@ -2,6 +2,7 @@ Mangafox Download Script
 ========================
 
 [![Build Status](https://travis-ci.org/Ziul/MangaFox-Download-Script.svg?branch=master)](https://travis-ci.org/Ziul/MangaFox-Download-Script)
+[![Coverage Status](https://coveralls.io/repos/Ziul/MangaFox-Download-Script/badge.png)](https://coveralls.io/r/Ziul/MangaFox-Download-Script)
 
 About
 -----
