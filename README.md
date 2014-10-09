@@ -1,6 +1,8 @@
 Mangafox Download Script
 ========================
 
+[![Build Status](https://travis-ci.org/Ziul/MangaFox-Download-Script.svg?branch=master)](https://travis-ci.org/Ziul/MangaFox-Download-Script)
+
 About
 -----
 Mangafox Download Script is a manga downloader similar to old Onemanga Download Script (although onemanga.com shut down). It works by scraping the image URL from every page in a manga chapter. It then it downloads all the images.
