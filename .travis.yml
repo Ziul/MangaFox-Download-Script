@@ -5,4 +5,5 @@ python:
 install: "pip install BeautifulSoup"
 # command to run tests
 script: 
+ - uname -a
  - nosetests
